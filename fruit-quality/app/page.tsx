@@ -112,18 +112,22 @@ export default function FruitAnalyzer() {
   };
 
   const analyzeImage = async () => {
-    if (!file) return;
+    if (!file || !preview) return;
 
     setLoading(true);
     setError(null);
 
-    const formData = new FormData();
-    formData.append('image', file);
-
     try {
+      // Send base64 image data directly from browser memory
       const response = await fetch('/api/analyze', {
         method: 'POST',
-        body: formData,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          imageData: preview, // This is already base64 from FileReader
+          mimeType: file.type,
+        }),
       });
 
       if (!response.ok) {
