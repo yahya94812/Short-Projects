@@ -1,0 +1,929 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>JSRunner</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: #1e1e1e;
+      color: #d4d4d4;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    /* Header */
+    .header {
+      background: #2d2d30;
+      border-bottom: 1px solid #3e3e42;
+      padding: 8px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      min-height: 48px;
+    }
+
+    .header h1 {
+      font-size: 16px;
+      font-weight: 500;
+      color: #cccccc;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .header h1::before {
+      content: "⚡";
+      font-size: 18px;
+    }
+
+    /* Toolbar */
+    .toolbar {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .run-btn {
+      background: #0e639c;
+      color: white;
+      border: none;
+      padding: 6px 12px;
+      border-radius: 3px;
+      cursor: pointer;
+      font-size: 13px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s;
+      position: relative;
+    }
+
+    .run-btn:hover:not(:disabled) {
+      background: #1177bb;
+    }
+
+    .run-btn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    .run-btn.running {
+      background: #da3633;
+    }
+
+    .run-btn.running:hover {
+      background: #f14c4c;
+    }
+
+    .run-btn::before {
+      content: "▶";
+      font-size: 12px;
+    }
+
+    .run-btn.running::before {
+      content: "⏹";
+      font-size: 12px;
+    }
+
+    .clear-btn {
+      background: #3c3c3c;
+      color: #cccccc;
+      border: none;
+      padding: 6px 12px;
+      border-radius: 3px;
+      cursor: pointer;
+      font-size: 13px;
+      transition: background 0.2s;
+    }
+
+    .clear-btn:hover:not(:disabled) {
+      background: #464647;
+    }
+
+    .clear-btn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    .share-btn {
+      background: #16825d;
+      color: white;
+      border: none;
+      padding: 6px 12px;
+      border-radius: 3px;
+      cursor: pointer;
+      font-size: 13px;
+      transition: background 0.2s;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .share-btn:hover:not(:disabled) {
+      background: #1a9d66;
+    }
+
+    .share-btn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    .share-btn::before {
+      content: "🔗";
+      font-size: 12px;
+    }
+
+    /* Execution indicator */
+    .execution-indicator {
+      display: none;
+      align-items: center;
+      gap: 8px;
+      color: #ffa500;
+      font-size: 12px;
+    }
+
+    .execution-indicator.active {
+      display: flex;
+    }
+
+    .spinner {
+      width: 12px;
+      height: 12px;
+      border: 2px solid #3c3c3c;
+      border-top: 2px solid #ffa500;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    /* Main Container */
+    .container {
+      display: flex;
+      flex: 1;
+      overflow: hidden;
+    }
+
+    /* Editor Panel */
+    .editor-panel {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      border-right: 1px solid #3e3e42;
+      min-width: 0;
+    }
+
+    .panel-header {
+      background: #252526;
+      padding: 8px 16px;
+      font-size: 13px;
+      color: #cccccc;
+      border-bottom: 1px solid #3e3e42;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .panel-header::before {
+      content: "📄";
+      font-size: 14px;
+    }
+
+    #code {
+      flex: 1;
+      background: #1e1e1e;
+      color: #d4d4d4;
+      border: none;
+      outline: none;
+      font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+      font-size: 14px;
+      line-height: 1.5;
+      padding: 16px;
+      resize: none;
+      tab-size: 2;
+    }
+
+    #code::placeholder {
+      color: #6a737d;
+    }
+
+    /* Output Panel */
+    .output-panel {
+      width: 40%;
+      display: flex;
+      flex-direction: column;
+      background: #252526;
+      min-width: 0;
+    }
+
+    .output-header {
+      background: #2d2d30;
+      padding: 8px 16px;
+      font-size: 13px;
+      color: #cccccc;
+      border-bottom: 1px solid #3e3e42;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .output-header-left {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .output-header-left::before {
+      content: "📟";
+      font-size: 14px;
+    }
+
+    .execution-time {
+      font-size: 11px;
+      color: #858585;
+    }
+
+    #output {
+      flex: 1;
+      background: #1e1e1e;
+      color: #d4d4d4;
+      padding: 16px;
+      overflow-y: auto;
+      font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+      font-size: 13px;
+      line-height: 1.4;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+    }
+
+    /* Scrollbar Styling */
+    ::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: #2d2d30;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: #424245;
+      border-radius: 4px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+      background: #4f4f52;
+    }
+
+    /* Status Bar */
+    .status-bar {
+      background: #007acc;
+      color: white;
+      padding: 4px 16px;
+      font-size: 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .status-bar.executing {
+      background: #da3633;
+      animation: pulse 2s infinite;
+    }
+
+    .status-bar.worker-active {
+      background: #16825d;
+    }
+
+    @keyframes pulse {
+      0% { opacity: 1; }
+      50% { opacity: 0.8; }
+      100% { opacity: 1; }
+    }
+
+    /* Log Styling */
+    .log {
+      color: #d4d4d4;
+      margin-bottom: 4px;
+    }
+
+    .error {
+      color: #f48771;
+      margin-bottom: 4px;
+    }
+
+    .warn {
+      color: #ddb62b;
+      margin-bottom: 4px;
+    }
+
+    .info {
+      color: #75beff;
+      margin-bottom: 4px;
+    }
+
+    .system {
+      color: #858585;
+      margin-bottom: 4px;
+      font-style: italic;
+    }
+
+    /* Responsive Design */
+    @media (max-width: 768px) {
+      .container {
+        flex-direction: column;
+      }
+
+      .output-panel {
+        width: 100%;
+        height: 40%;
+      }
+
+      .editor-panel {
+        border-right: none;
+        border-bottom: 1px solid #3e3e42;
+      }
+
+      .header h1 {
+        font-size: 14px;
+      }
+
+      .toolbar {
+        gap: 4px;
+      }
+
+      .run-btn,
+      .clear-btn,
+      .share-btn {
+        padding: 4px 8px;
+        font-size: 12px;
+      }
+
+      #code {
+        font-size: 13px;
+        padding: 12px;
+      }
+
+      #output {
+        font-size: 12px;
+        padding: 12px;
+      }
+
+      .execution-indicator {
+        display: none !important; /* Hide on mobile to save space */
+      }
+    }
+
+    @media (max-width: 480px) {
+      .header {
+        padding: 6px 12px;
+        min-height: 40px;
+      }
+
+      .panel-header,
+      .output-header {
+        padding: 6px 12px;
+        font-size: 12px;
+      }
+
+      #code,
+      #output {
+        padding: 8px;
+      }
+
+      .output-panel {
+        height: 35%;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>JsRunner</h1>
+    <div class="toolbar">
+      <div class="execution-indicator" id="executionIndicator">
+        <div class="spinner"></div>
+        <span>Executing...</span>
+      </div>
+      <button class="run-btn" id="runBtn" onclick="toggleExecution()" title="Run Code (Ctrl+Enter)">
+        <span id="runBtnText">Run</span>
+      </button>
+      <button class="clear-btn" id="clearBtn" onclick="clearOutput()" title="Clear Output">Clear</button>
+      <button class="share-btn" id="shareBtn" onclick="shareCode()" title="Share Code">Share</button>
+    </div>
+  </div>
+
+  <div class="container">
+    <div class="editor-panel">
+      <div class="panel-header">main.js</div>
+      <textarea 
+        id="code" 
+        placeholder="// Write your JavaScript code here...
+console.log('Hello, World!');
+
+// Example: Long running task
+for (let i = 0; i < 1000000; i++) {
+  if (i % 100000 === 0) {
+    console.log('Progress:', i);
+  }
+}
+
+// Example: Infinite loop (can be terminated)
+// while (true) {
+//   console.log('This will run forever...');
+// }
+
+// Example: Async operations
+setTimeout(() => {
+  console.log('Delayed message after 2 seconds');
+}, 2000);"
+        spellcheck="false"
+      ></textarea>
+    </div>
+
+    <div class="output-panel">
+      <div class="output-header">
+        <div class="output-header-left">Console Output</div>
+        <div class="execution-time" id="executionTime"></div>
+      </div>
+      <div id="output"></div>
+    </div>
+  </div>
+
+  <div class="status-bar" id="statusBar">
+    <span id="statusText">Ready</span>
+    <span id="statusInfo">JavaScript Runner v2.0 (Web Worker)</span>
+  </div>
+
+  <script src="./share_file.js"></script>
+  <script src="./open_share.js"></script>
+  <script>
+    let worker = null;
+    let isExecuting = false;
+    let executionCount = 0;
+    let executionStartTime = 0;
+    let executionTimer = null;
+
+    // Create worker code as blob URL
+    const workerCode = `
+      let timeouts = new Set();
+      let intervals = new Set();
+
+      // Override setTimeout and setInterval to track them
+      const originalSetTimeout = self.setTimeout;
+      const originalSetInterval = self.setInterval;
+      const originalClearTimeout = self.clearTimeout;
+      const originalClearInterval = self.clearInterval;
+
+      self.setTimeout = function(fn, delay) {
+        const args = Array.prototype.slice.call(arguments, 2);
+        const id = originalSetTimeout.call(self, function() {
+          timeouts.delete(id);
+          fn.apply(self, args);
+        }, delay);
+        timeouts.add(id);
+        return id;
+      };
+
+      self.setInterval = function(fn, delay) {
+        const args = Array.prototype.slice.call(arguments, 2);
+        const id = originalSetInterval.call(self, function() {
+          fn.apply(self, args);
+        }, delay);
+        intervals.add(id);
+        return id;
+      };
+
+      self.clearTimeout = function(id) {
+        timeouts.delete(id);
+        return originalClearTimeout.call(self, id);
+      };
+
+      self.clearInterval = function(id) {
+        intervals.delete(id);
+        return originalClearInterval.call(self, id);
+      };
+
+      // Custom console implementation
+      const console = {
+        log: function() {
+          const args = Array.prototype.slice.call(arguments);
+          self.postMessage({
+            type: 'console',
+            method: 'log',
+            args: args.map(formatArg)
+          });
+        },
+        error: function() {
+          const args = Array.prototype.slice.call(arguments);
+          self.postMessage({
+            type: 'console',
+            method: 'error',
+            args: args.map(formatArg)
+          });
+        },
+        warn: function() {
+          const args = Array.prototype.slice.call(arguments);
+          self.postMessage({
+            type: 'console',
+            method: 'warn',
+            args: args.map(formatArg)
+          });
+        },
+        info: function() {
+          const args = Array.prototype.slice.call(arguments);
+          self.postMessage({
+            type: 'console',
+            method: 'info',
+            args: args.map(formatArg)
+          });
+        },
+        clear: function() {
+          self.postMessage({
+            type: 'console',
+            method: 'clear',
+            args: []
+          });
+        }
+      };
+
+      function formatArg(arg) {
+        if (typeof arg === 'object' && arg !== null) {
+          try {
+            return JSON.stringify(arg, null, 2);
+          } catch (e) {
+            return String(arg);
+          }
+        }
+        return String(arg);
+      }
+
+      function cleanup() {
+        // Clear all timeouts and intervals
+        timeouts.forEach(function(id) {
+          originalClearTimeout.call(self, id);
+        });
+        intervals.forEach(function(id) {
+          originalClearInterval.call(self, id);
+        });
+        timeouts.clear();
+        intervals.clear();
+      }
+
+      self.onmessage = function(e) {
+        const data = e.data;
+        const type = data.type;
+        const code = data.code;
+        
+        if (type === 'execute') {
+          try {
+            // Clean up previous execution
+            cleanup();
+            
+            // Create execution context
+            const execFunction = new Function(
+              'console', 
+              'setTimeout', 
+              'setInterval', 
+              'clearTimeout', 
+              'clearInterval',
+              code
+            );
+            
+            // Execute the code
+            const result = execFunction(
+              console,
+              self.setTimeout,
+              self.setInterval,
+              self.clearTimeout,
+              self.clearInterval
+            );
+            
+            // Handle promises
+            if (result && typeof result.then === 'function') {
+              result.catch(function(err) {
+                console.error('Unhandled Promise Rejection:', err.message || err);
+              });
+            }
+            
+            self.postMessage({ type: 'success' });
+            
+          } catch (err) {
+            self.postMessage({
+              type: 'error',
+              message: err.message || String(err),
+              stack: err.stack
+            });
+          }
+        } else if (type === 'terminate') {
+          cleanup();
+          self.postMessage({ type: 'terminated' });
+        }
+      };
+
+      // Handle uncaught errors
+      self.onerror = function(message, filename, lineno, colno, error) {
+        self.postMessage({
+          type: 'error',
+          message: error ? (error.message || String(error)) : String(message),
+          stack: error ? error.stack : undefined
+        });
+        return true;
+      };
+
+      // Handle unhandled promise rejections
+      self.onunhandledrejection = function(event) {
+        const reason = event.reason;
+        self.postMessage({
+          type: 'error',
+          message: 'Unhandled Promise Rejection: ' + (reason.message || String(reason)),
+          stack: reason.stack
+        });
+      };
+    `;
+
+    function createWorker() {
+      try {
+        const blob = new Blob([workerCode], { type: 'application/javascript' });
+        const workerUrl = URL.createObjectURL(blob);
+        return new Worker(workerUrl);
+      } catch (error) {
+        console.error('Failed to create worker:', error);
+        return null;
+      }
+    }
+
+    function toggleExecution() {
+      if (isExecuting) {
+        terminateExecution();
+      } else if (worker) {
+        // Worker is alive but not executing - terminate it
+        terminateExecution();
+      } else {
+        runCode();
+      }
+    }
+
+    function runCode() {
+      const code = document.getElementById('code').value.trim();
+      
+      if (!code) {
+        appendOutput('// No code to execute', 'info');
+        return;
+      }
+
+      // If there's already a worker running, terminate it first
+      if (worker) {
+        worker.terminate();
+        worker = null;
+      }
+
+      // Create new worker
+      worker = createWorker();
+      if (!worker) {
+        appendOutput('❌ Failed to create worker thread', 'error');
+        return;
+      }
+
+      // Update UI
+      isExecuting = true;
+      executionCount++;
+      executionStartTime = Date.now();
+      
+      updateUI();
+      
+      // Set up worker message handling
+      worker.onmessage = function(e) {
+        const data = e.data;
+        const type = data.type;
+        
+        if (type === 'console') {
+          const method = data.method;
+          const args = data.args;
+          appendOutput(formatConsoleOutput(method, args), method);
+        } else if (type === 'error') {
+          const message = data.message;
+          const stack = data.stack;
+          appendOutput('❌ Error: ' + message, 'error');
+          if (stack) {
+            appendOutput(stack, 'error');
+          }
+          finishExecution('Execution failed');
+        } else if (type === 'success') {
+          // Main synchronous code finished, but keep worker alive for async operations
+          isExecuting = false;
+          stopExecutionTimer();
+          updateUI();
+          document.getElementById('statusInfo').textContent = 'Main code executed (#' + executionCount + ') - Async operations may still be running';
+          // appendOutput('// Main execution completed - Worker active for async operations', 'info');
+        } else if (type === 'terminated') {
+          appendOutput('⚠️ Execution terminated by user', 'warn');
+          finishExecution('Execution terminated');
+        }
+      };
+
+      worker.onerror = function(error) {
+        appendOutput('❌ Worker Error: ' + error.message, 'error');
+        finishExecution('Worker error');
+      };
+
+      // Add execution header
+      appendOutput('// Execution #' + executionCount + ' (Worker Thread)', 'info');
+      
+      // Send code to worker
+      worker.postMessage({ type: 'execute', code: code });
+      
+      // Start execution timer
+      startExecutionTimer();
+    }
+
+    function terminateExecution() {
+      if (!worker) return;
+      
+      worker.postMessage({ type: 'terminate' });
+      
+      setTimeout(function() {
+        if (worker) {
+          worker.terminate();
+          worker = null;
+        }
+        finishExecution('Execution terminated');
+      }, 100);
+    }
+
+    function finishExecution(statusMessage) {
+      isExecuting = false;
+      
+      if (worker) {
+        worker.terminate();
+        worker = null;
+      }
+      
+      stopExecutionTimer();
+      updateUI();
+      
+      document.getElementById('statusInfo').textContent = statusMessage;
+      appendOutput('', 'log'); // Add spacing
+    }
+
+    function updateUI() {
+      const runBtn = document.getElementById('runBtn');
+      const runBtnText = document.getElementById('runBtnText');
+      const clearBtn = document.getElementById('clearBtn');
+      const executionIndicator = document.getElementById('executionIndicator');
+      const statusBar = document.getElementById('statusBar');
+      const statusText = document.getElementById('statusText');
+
+      if (isExecuting) {
+        runBtn.classList.add('running');
+        runBtnText.textContent = 'Stop';
+        clearBtn.disabled = true;
+        executionIndicator.classList.add('active');
+        statusBar.classList.add('executing');
+        statusBar.classList.remove('worker-active');
+        statusText.textContent = 'Executing...';
+      } else if (worker) {
+        // Worker is alive but not executing main code (async operations may be running)
+        runBtn.classList.remove('running');
+        runBtnText.textContent = 'Stop Execution';
+        clearBtn.disabled = false;
+        executionIndicator.classList.remove('active');
+        statusBar.classList.remove('executing');
+        statusBar.classList.add('worker-active');
+        statusText.textContent = 'Worker Active';
+      } else {
+        runBtn.classList.remove('running');
+        runBtnText.textContent = 'Run';
+        clearBtn.disabled = false;
+        executionIndicator.classList.remove('active');
+        statusBar.classList.remove('executing');
+        statusBar.classList.remove('worker-active');
+        statusText.textContent = 'Ready';
+      }
+    }
+
+    function startExecutionTimer() {
+      executionTimer = setInterval(function() {
+        const elapsed = Date.now() - executionStartTime;
+        document.getElementById('executionTime').textContent = (elapsed / 1000).toFixed(1) + 's';
+      }, 100);
+    }
+
+    function stopExecutionTimer() {
+      if (executionTimer) {
+        clearInterval(executionTimer);
+        executionTimer = null;
+      }
+    }
+
+    function clearOutput() {
+      document.getElementById('output').innerHTML = '';
+      document.getElementById('executionTime').textContent = '';
+      document.getElementById('statusInfo').textContent = 'Output cleared';
+      executionCount = 0;
+    }
+
+    function shareCode() {
+      // Placeholder function for share functionality
+      // You can implement your sharing logic here
+      saveContent();
+      const code = document.getElementById('code').value.trim();
+      
+      if (!code) {
+        appendOutput('// No code to share', 'warn');
+        return;
+      }
+      
+      // For now, just show a message
+      // appendOutput('🔗 Share functionality coming soon...', 'info');
+      // document.getElementById('statusInfo').textContent = 'Share feature ready for implementation';
+      
+      // Example of what you might implement:
+      // - Copy code to clipboard
+      // - Generate shareable URL
+      // - Upload to GitHub Gist
+      // - Share via social media
+      // - Export as file
+    }
+
+    function appendOutput(content, type) {
+      if (typeof type === 'undefined') {
+        type = 'log';
+      }
+      const output = document.getElementById('output');
+      const div = document.createElement('div');
+      div.className = type;
+      div.textContent = content;
+      output.appendChild(div);
+      output.scrollTop = output.scrollHeight;
+    }
+
+    function formatConsoleOutput(method, args) {
+      const prefixes = {
+        'log': '',
+        'error': '❌ ',
+        'warn': '⚠️ ',
+        'info': 'ℹ️ '
+      };
+      const prefix = prefixes[method] || '';
+      return prefix + args.join(' ');
+    }
+
+    // Keyboard shortcuts
+    document.addEventListener('keydown', function(e) {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+        e.preventDefault();
+        if (!isExecuting) {
+          runCode();
+        }
+      } else if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+        e.preventDefault();
+        clearOutput();
+      } else if (e.key === 'Escape' && isExecuting) {
+        e.preventDefault();
+        terminateExecution();
+      }
+    });
+
+    // Tab support in textarea
+    document.getElementById('code').addEventListener('keydown', function(e) {
+      if (e.key === 'Tab') {
+        e.preventDefault();
+        const start = this.selectionStart;
+        const end = this.selectionEnd;
+        const value = this.value;
+        
+        this.value = value.substring(0, start) + '  ' + value.substring(end);
+        this.selectionStart = this.selectionEnd = start + 2;
+      }
+    });
+
+    // Initialize
+    document.addEventListener('DOMContentLoaded', function() {
+      updateUI();
+      document.getElementById('statusInfo').textContent = 'Ready to code! (Web Worker enabled)';
+    });
+
+    // Cleanup on page unload
+    window.addEventListener('beforeunload', function() {
+      if (worker) {
+        worker.terminate();
+      }
+    });
+  </script>
+  
+</body>
+</html>
